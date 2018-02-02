@@ -1,5 +1,5 @@
 
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy
 import face_recognition
 
@@ -74,3 +74,31 @@ class ImageProcessor:
         else:
             location =  (location[3], location[0])
         self.image.paste(mask.image, location, mask.image)
+
+    def draw(self, areas, outline=128, fill=None, width=5):
+        "Draws rectangle in thumbnail"
+        if len(areas):
+            draw = ImageDraw.Draw(self.image)
+            for area in areas:
+                 for i in range(width):
+                     draw.rectangle([area[3] - i ,area[0] - i, area[1] - i, area[2] - i],
+                                    outline=outline, fill=fill)
+
+
+    def find(self, needles, rotate=False):
+        faces = face_recognition.face_locations(self.numpy)
+        if len(faces):
+            encodings = face_recognition.face_encodings(self.numpy, faces)
+            for idx, encoding in enumerate(encodings):
+                matches = face_recognition.compare_faces(needles, encoding)
+                if len(matches) :
+                    return faces[idx]
+
+    def rotate(self):
+        self.image = self.image.rotate(-90, expand=True)
+        self._numpy = None
+
+    def extract(self, face):
+        image = self.image.copy()
+        print(" crop %s / %s" % (str((face[3], face[0], face[1], face[2])), str(image.size)))
+        return image.crop(face)

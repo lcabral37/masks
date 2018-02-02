@@ -7,95 +7,40 @@ from PIL import Image, ImageTk, ImageDraw
 import numpy
 import tkinter
 import time
+from imageProcessor import ImageProcessor
 
 test= 50
 VIEW_SIZE = 400
-TOLERANCE = 0.3
 
-class Photo:
-    "A object that loads and manipulates a given image"
+class View:
+    def __init__(self):
+        self._root = tkinter.Tk()
+        self._root.geometry("+%d+%d" % (300, 300))
+        self._root.geometry("%dx%d" % ((VIEW_SIZE + 20) * 3, VIEW_SIZE + 20 + VIEW_SIZE))
 
-    parse_size= 1024
-
-    def __init__(self, filename):
-        self.filename = filename
-        self.load()
-
-    def load(self):
-        self._image = Image.open(self.filename)
-
-        self._thumbnail = self._image.copy()
-        self._thumbnail.thumbnail((VIEW_SIZE, VIEW_SIZE), Image.ANTIALIAS)
-
-        self.generateNumpy()
-
-    def generateNumpy(self):
-        self._numpy = self._image.copy()
-        self._numpy.thumbnail((self.parse_size, self.parse_size), Image.ANTIALIAS)
-        self._numpy.convert("RGB")
-        self._numpy = numpy.array(self._numpy)
-
-    def image(self):
-        return self._image
-
-    @property
-    def numpy(self):
-        return self._numpy
-
-    @property
-    def faces(self):
-        if not hasattr(self, '_faces'):
-            self._faces = face_recognition.face_locations(self._numpy)
-        return self._faces
-
-    def display(self, window, grid, *face):
+    def draw(self, image, position):
         global tkpi
-        if face:
-            face = self.fix_ratio([face])
-            self._thumbnail = self.draw_rectangles(self._thumbnail, face)
-        tkpi[grid] = ImageTk.PhotoImage(self._thumbnail)
-        label_image = tkinter.Label(window, image=tkpi[grid], text=self.filename, compound=tkinter.TOP)
+        tkpi = [0,1,2,3,4,5]
+        if not position:
+            position = (0, 0)
+        grid = (position[0] + 1) * position[1]
+        image = image.copy()
+        image.thumbnail((VIEW_SIZE, VIEW_SIZE))
+        if image.size[0] > VIEW_SIZE or image.size[1] > VIEW_SIZE:
+            image.thumbnail((VIEW_SIZE, VIEW_SIZE), Image.ANTIALIAS)
+
+        tkpi[grid] = ImageTk.PhotoImage(image)
+        label_image = tkinter.Label(self._root,
+            image=tkpi[grid],
+        #    text=self.filename,
+            compound=tkinter.TOP)
         label_image.place(
-            x=(VIEW_SIZE + 20) * grid + 10,
-            y=10,
+            x=(VIEW_SIZE + 20) * position[0] + 10,
+            y=(VIEW_SIZE + 20) * position[1] + 10,
             width=VIEW_SIZE,
             height=VIEW_SIZE + 10)
-        root.update()
+        self._root.update()
 
-    def draw_rectangles(self, image, faces):
-        if len(faces):
-            for f in faces:
-                draw = ImageDraw.Draw(image)
-                draw.rectangle([f[3],f[0], f[1], f[2]], outline=128)
-        return image
-
-    def fix_ratio(self, areas, *ratio):
-        "Flatens and fixes the rectangles ratios list"
-        result = []
-        if len(areas):
-            if not ratio:
-                ratio = VIEW_SIZE / self.parse_size
-            for subareas in areas:
-                for area in subareas:
-                    result.append(
-                        (int(ratio * area[0]), int(ratio * area[1]),
-                        int(ratio * area[2]), int(ratio * area[3])))
-        return result
-
-    def find(self, needles):
-        faces = face_recognition.face_locations(self.numpy)
-        if len(faces):
-            encodings = face_recognition.face_encodings(self.numpy, faces)
-            for idx, encoding in enumerate(encodings):
-                matches = face_recognition.compare_faces(needles, encoding, TOLERANCE)
-                if len(matches) :
-                    print("Found at %d" % idx)
-                    return faces[idx]
-
-    def rotate(self):
-        self._image = self._image.rotate(-90, expand=True)
-        self._thumbnail = self._thumbnail.rotate(-90, expand=True)
-        self.generateNumpy()
 def get_source():
     parser = argparse.ArgumentParser()
     parser.add_argument('image')
@@ -117,14 +62,16 @@ def parse_folder():
         if counter < test:
             print("%05d: %s" % (counter, filename))
             try:
-                photo = Photo(filename)
-                photo.display(root, 1)
+
+                photo = ImageProcessor(filename = filename)
+                view.draw(photo.image, (1, 0))
                 found = photo.find(known_faces)
                 if not found:
                     photo.rotate()
                     found = photo.find(known_faces)
                 if found:
-                    photo.display(root, 2, found)
+                    view.draw(photo.image, (2, 0))
+                    face = photo.extract(found)
             except RuntimeError:
                 print("Failed %s" % filename)
             except OSError:
@@ -135,18 +82,18 @@ def parse_folder():
     time.sleep(5)
     root.destroy()
 
-tkpi = [0,1,2]
-root = tkinter.Tk()
-root.geometry("+%d+%d" % (300, 300))
-root.geometry("%dx%d" % ((VIEW_SIZE + 20) * 3, VIEW_SIZE + 20 + VIEW_SIZE))
-
 print("Parsing needle")
 
-known_photo = Photo(get_source())
-known_photo.display(root, 1)
-known_faces  = [face_recognition.face_encodings(known_photo.numpy)]
-location = face_recognition.face_locations(known_photo.numpy)
-print("known location: %s" % str(location))
-known_photo.display(root, 0, location[0])
-root.after(500, parse_folder)
-root.mainloop()
+view = View()
+known = ImageProcessor(filename=get_source())
+view.draw(known.image, (1, 0))
+locations = known.faces
+known_faces  = [face_recognition.face_encodings(known.numpy)]
+known.draw(locations)
+view.draw(known.image, (0, 0))
+
+#view.draw(known_photo.thumbnail, (0, 0))
+#view.draw(known_photo.extract(location[0]), (0, 1))
+
+view._root.after(1000, parse_folder)
+view._root.mainloop()

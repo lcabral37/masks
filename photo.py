@@ -8,38 +8,9 @@ import numpy
 import tkinter
 import time
 from imageProcessor import ImageProcessor
+from view import ViewGUI
 
 test= 50
-VIEW_SIZE = 400
-
-class View:
-    def __init__(self):
-        self._root = tkinter.Tk()
-        self._root.geometry("+%d+%d" % (300, 300))
-        self._root.geometry("%dx%d" % ((VIEW_SIZE + 20) * 3, VIEW_SIZE + 20 + VIEW_SIZE))
-
-    def draw(self, image, position):
-        global tkpi
-        tkpi = [0,1,2,3,4,5]
-        if not position:
-            position = (0, 0)
-        grid = (position[0] + 1) * position[1]
-        image = image.copy()
-        image.thumbnail((VIEW_SIZE, VIEW_SIZE))
-        if image.size[0] > VIEW_SIZE or image.size[1] > VIEW_SIZE:
-            image.thumbnail((VIEW_SIZE, VIEW_SIZE), Image.ANTIALIAS)
-
-        tkpi[grid] = ImageTk.PhotoImage(image)
-        label_image = tkinter.Label(self._root,
-            image=tkpi[grid],
-        #    text=self.filename,
-            compound=tkinter.TOP)
-        label_image.place(
-            x=(VIEW_SIZE + 20) * position[0] + 10,
-            y=(VIEW_SIZE + 20) * position[1] + 10,
-            width=VIEW_SIZE,
-            height=VIEW_SIZE + 10)
-        self._root.update()
 
 def get_source():
     parser = argparse.ArgumentParser()
@@ -80,11 +51,11 @@ def parse_folder():
             break
     print("Finished analysing %d images" % counter)
     time.sleep(5)
-    root.destroy()
+    view.destroy()
 
 print("Parsing needle")
 
-view = View()
+view = ViewGUI()
 known = ImageProcessor(filename=get_source())
 view.draw(known.image, (1, 0))
 locations = known.faces

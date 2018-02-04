@@ -1,2 +1,9 @@
+#resource files used
 /source
-*jpg
+*.json
+*.jpg
+*.png
+*.mp4
+
+# cache
+__pycache__

@@ -108,7 +108,10 @@ class ImageProcessor:
         if not location:
             location = self.faces[0]
 
+        if not len(mask.faces):
+            mask.faces = [(0, mask.image.size[0], mask.image.size[1], 0)]
         mask_location = mask.faces[0]
+
         location_size = max([location[1] - location[3],
                              location[2] - location[0]])
         mask_size = max([mask_location[1] - mask_location[3],

@@ -4,12 +4,24 @@ import numpy
 import face_recognition
 
 class ImageProcessor:
-    def __init__(self, image=None, filename=None, processing=1024, convert=None):
+    "Contains sevelral methods to processes into finding faces within"
+    def __init__(self, image=None, nparray=None, filename=None, processing=1024):
+        """class constructor
+        The constructor requires either the filename, image, or nparray to be given as argument.
 
-        if image:
-            self._original = image
+        Keyword arguments:
+        filename -- the path to an image file
+        image -- an PIL.Image object
+        nparray -- a nparray
+        processing - size of image to be used for processing (default 1024)
+        """
         if filename:
             self._original = Image.open(filename)
+        elif image:
+            self._original = image
+        elif not nparray is None:
+            self._original = Image.fromarray(nparray)
+
         if not hasattr(self, '_original'):
             raise Exception("Image or filename missing")
 
@@ -17,7 +29,10 @@ class ImageProcessor:
         self._processing = processing
 
     @property
-    def numpy(self):
+    def processing_nparray(self):
+        """The nparray used for processing.
+        This is a resized version of the image so processing can be made faster.
+        """
         if not hasattr(self, '_numpy'):
             small_image = self.image.copy().convert("RGB")
             self._processing_ratio = self._processing / max(small_image.size)
@@ -27,18 +42,39 @@ class ImageProcessor:
             self._numpy = numpy.array(small_image)
         return self._numpy
 
+    def nparray(self):
+        """ The image nparray
+        """
+        self.image.convert("RGB")
+        return numpy.array(self.image)
+
     @property
     def faces(self):
+        """ Returns an array of bounding boxes of human faces in a image
+        """
         if not hasattr(self, "_faces"):
-            faces = face_recognition.face_locations(self.numpy)
+            faces = face_recognition.face_locations(self.processing_nparray)
             self._faces = self.fix_ratio(faces)
         return self._faces
 
     @faces.setter
     def faces(self, faces):
+        """ Sets an array of bounding boxes of human faces.
+        This is used to override the automated method or to be used when the automated method
+        fails to return
+        """
         self._faces = faces
 
     def fix_ratio(self, areas, ratio=None):
+        """Fixes the ratio of bounding areas.
+        As processing of images is done on a resized version, this is coommonly used to
+        resize the boundary boxes to the original image sise
+
+        Keyword arguments:
+        areas -- the boundary areas to rezise
+        ratio -- the ratio to use to resie the boxes (default is the ratio of the
+            image vs the processing image size)
+        """
         fixed = []
         if not ratio:
             ratio =  self._processing_ratio
@@ -52,11 +88,23 @@ class ImageProcessor:
         return fixed
 
     def resize(self, ratio):
+        """Resizes the image
+
+        Keyword arguments:
+        ratio -- the ratio to use
+        """
         self.image = self._original.copy()
         self.image = self.image.resize((int(self.image.size[0]/ ratio),
                                         int(self.image.size[1]/ ratio)))
 
     def add_mask(self, mask, location=None, align=True):
+        """Adds a overlay image in the given locations.
+
+        Keyword arguments:
+        mask -- the overlay image to be used as mask
+        location -- a boundary location wher to place the mask image (default the first face found within the image)
+        align -- aligns the face location found in the mask with the given location  (default True)
+        """
         if not location:
             location = self.faces[0]
 
@@ -76,7 +124,15 @@ class ImageProcessor:
         self.image.paste(mask.image, location, mask.image)
 
     def draw(self, areas, outline=128, fill=None, width=5):
-        "Draws rectangle in thumbnail"
+        """Draws rectangle in thumbnail
+        It allows setting a thickness so the ractangle are still visible when resizing occurs
+
+        Keyword arguments:
+        areas -- boudary locations where to draw rectangles
+        outline -- the color of the border (default red)
+        fill -- the rectangle fill (default None)
+        width -- thickness of the border (default 5)
+        """
         if len(areas):
             draw = ImageDraw.Draw(self.image)
             for area in areas:
@@ -85,20 +141,34 @@ class ImageProcessor:
                                     outline=outline, fill=fill)
 
 
-    def find(self, needles, rotate=False):
-        faces = face_recognition.face_locations(self.numpy)
+    def find(self, needles):
+        """Finds specific faces within the image
+
+        Keyword arguments:
+        needles -- a list of known face encodings
+        """
+        faces = face_recognition.face_locations(self.processing_nparray)
         if len(faces):
-            encodings = face_recognition.face_encodings(self.numpy, faces)
+            encodings = face_recognition.face_encodings(self.processing_nparray, faces)
             for idx, encoding in enumerate(encodings):
                 matches = face_recognition.compare_faces(needles, encoding)
                 if len(matches) :
                     return faces[idx]
 
-    def rotate(self):
-        self.image = self.image.rotate(-90, expand=True)
+    def rotate(self, degrees = -90):
+        """Rotates the images
+
+        Keyword arguments:
+        degrees -- derees to rotate (default -90)
+        """
+        self.image = self.image.rotate(degrees, expand=True)
         self._numpy = None
 
-    def extract(self, face):
+    def extract(self, area):
+        """ Crops the given area from the image
+
+        Keyword arguments:
+        area -- boundary area to crop
+        """
         image = self.image.copy()
-        print(" crop %s / %s" % (str((face[3], face[0], face[1], face[2])), str(image.size)))
-        return image.crop(face)
+        return image.crop(area)

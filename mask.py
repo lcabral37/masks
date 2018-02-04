@@ -13,7 +13,7 @@ parser.add_argument('mask')
 parser.add_argument('output')
 args = parser.parse_args()
 print("Loading image '%s'" % args.image)
-image = ImageProcessor(filename=args.image, convert="RGB", processing=processing)
+image = ImageProcessor(filename=args.image", processing=processing)
 
 print("Loading image '%s'" % args.mask)
 mask = ImageProcessor(filename=args.mask, processing=processing)

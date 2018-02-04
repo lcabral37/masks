@@ -3,9 +3,6 @@
 import argparse
 import face_recognition
 from pathlib import Path
-from PIL import Image, ImageTk, ImageDraw
-import numpy
-import tkinter
 import time
 from imageProcessor import ImageProcessor
 from view import ViewGUI
@@ -59,7 +56,7 @@ view = ViewGUI()
 known = ImageProcessor(filename=get_source())
 view.draw(known.image, (1, 0))
 locations = known.faces
-known_faces  = [face_recognition.face_encodings(known.numpy)]
+known_faces  = [face_recognition.face_encodings(known.processing_nparray)]
 known.draw(locations)
 view.draw(known.image, (0, 0))
 
